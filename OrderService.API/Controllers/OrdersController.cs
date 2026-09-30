@@ -54,6 +54,19 @@ public class OrdersController : ControllerBase
             return BadRequest(
                 "Quantity must be greater than zero.");
 
+        if (string.IsNullOrWhiteSpace(request.Email))
+            return BadRequest("Email is required.");
+
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(request.Email.Trim());
+            request.Email = addr.Address;
+        }
+        catch
+        {
+            return BadRequest("Invalid email address.");
+        }
+
         // 1. ProductService-dən məhsulu alırıq
         var product = await _productService
             .GetProductAsync(request.ProductId);
@@ -73,6 +86,7 @@ public class OrdersController : ControllerBase
             Quantity = request.Quantity,
             UnitPrice = product.Price,
             TotalPrice = product.Price * request.Quantity,
+            Email = request.Email.Trim(),
             CreatedAt = DateTime.UtcNow
         };
 
@@ -96,15 +110,25 @@ public class OrdersController : ControllerBase
                 "Order could not be completed because stock update failed.");
         }
 
-        // 5. NotificationService çağırılır
-        await _notificationService.SendAsync(
-            new NotificationRequest
-            {
-                OrderId = order.Id,
-                ProductName = order.ProductName,
-                Quantity = order.Quantity,
-                TotalPrice = order.TotalPrice
-            });
+        // 5. NotificationService çağırılır (email göndərmək üçün)
+        // Order yaransa da, mail göndərilməsə order silinmir —
+        // sadəcə loglanır, çünki əsas əməliyyat artıq uğurludur.
+        try
+        {
+            await _notificationService.SendAsync(
+                new NotificationRequest
+                {
+                    OrderId = order.Id,
+                    ProductName = order.ProductName,
+                    Quantity = order.Quantity,
+                    TotalPrice = order.TotalPrice,
+                    Email = order.Email
+                });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Notification failed for order {order.Id}: {ex.Message}");
+        }
 
         return CreatedAtAction(
             nameof(GetById),

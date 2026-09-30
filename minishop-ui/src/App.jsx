@@ -62,6 +62,21 @@ function App() {
       return;
     }
 
+    const email = window.prompt(
+      "Emailinizi daxil edin (sifariş təsdiqi bu ünvana göndəriləcək):",
+      ""
+    );
+
+    if (!email)
+      return;
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(email.trim())) {
+      setMessage("Please enter a valid email address.");
+      return;
+    }
+
     try {
 
       setLoading(true);
@@ -70,11 +85,12 @@ function App() {
 
       const order = await createOrder(
         product.id,
-        quantity
+        quantity,
+        email.trim()
       );
 
       setMessage(
-        `Order #${order.id} created successfully. Total: ${order.totalPrice} AZN`
+        `Order #${order.id} created successfully. Confirmation sent to ${email.trim()}. Total: ${order.totalPrice} AZN`
       );
 
       await loadProducts();

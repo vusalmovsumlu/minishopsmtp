@@ -9,4 +9,6 @@ public class NotificationRequest
     public int Quantity { get; set; }
 
     public decimal TotalPrice { get; set; }
+
+    public string Email { get; set; } = string.Empty;
 }

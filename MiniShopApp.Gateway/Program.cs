@@ -1,3 +1,6 @@
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
@@ -19,6 +22,41 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 app.UseCors("ReactPolicy");
+app.Use(async (context, next) =>
+{
+    if (context.Request.Method == HttpMethods.Delete &&
+        context.Request.Path.StartsWithSegments("/api/products"))
+    {
+        context.Response.StatusCode =
+            StatusCodes.Status403Forbidden;
+
+        await context.Response.WriteAsJsonAsync(new
+        {
+            message = "Deleting products is not allowed through API Gateway."
+        });
+
+        return;
+    }
+
+    await next();
+});
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("orderLimiter", options =>
+    {
+        options.PermitLimit = 5;
+
+        options.Window =
+            TimeSpan.FromSeconds(30);
+
+        options.QueueLimit = 0;
+
+        options.QueueProcessingOrder =
+            QueueProcessingOrder.OldestFirst;
+    });
+});
+
+app.UseRateLimiter();
 
 app.MapReverseProxy();
 
